@@ -25,6 +25,9 @@ run: all
 	
 runClient:
 	./bin/client
+
+runClientBDP:
+	./bin/clientBDP
 	
 runGraphicalClient:
 	./bin/graphicalClient

@@ -275,6 +275,14 @@ if(USE_QT5)
 	qt5_use_modules(${client} Core)
 endif()
 
+##build non graphical clientBDP
+set (clientBDP clientBDP)
+add_executable(${clientBDP} src/clientBDP/main.cpp )
+target_link_libraries(${clientBDP} ${libs})
+if(USE_QT5)
+	qt5_use_modules(${clientBDP} Core)
+endif()
+
 ##build logging client
 set (lclient logClient)
 add_executable(${lclient} ${LCLIENT_MOC_SRCS}

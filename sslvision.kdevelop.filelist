@@ -72,6 +72,8 @@ src/app/stacks/visionstack.h
 src/app/videostats.h
 src/client
 src/client/main.cpp
+src/clientBDP
+src/client/main.cpp
 src/graphicalClient
 src/graphicalClient/ClientThreading.cpp
 src/graphicalClient/ClientThreading.h
