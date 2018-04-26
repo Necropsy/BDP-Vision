@@ -11,6 +11,19 @@
 //#include "messages_robocup_ssl_geometry.pb.h"
 #include "messages_robocup_ssl_wrapper.pb.h"
 
+//======================Envio de Socket======================
+#include <sys/socket.h>
+#include <netdb.h>
+#include <string.h>
+
+#include <string>
+
+//Parametros para o servidor
+#define BDP_Tbuffer 1024
+#define PORTA 13822
+#define IP "224.5.23.2"
+//===========================================================
+
 //Valor ficticio
 #define NA 999.0
 //Tamanho do vetor BDP_MSG
@@ -21,6 +34,7 @@ using namespace std;
 //Globais:
 //BDP_MSG gasta ou todo 33 posições
 float BDP_MSG[MSG];
+char BDP[100];
 int varControle = 0;
 
 //Padrão de msg BDP:
@@ -46,6 +60,20 @@ void RobotInfo(const SSL_DetectionRobot & robot) {
     varControle += varControle+5;
 }
 
+void toVecChar(){
+	char auxMSG[5];
+	BDP[0] = '&';
+	for(int i=0; i<MSG; i++){
+		printf("%d ", int(BDP_MSG[i]));
+	}
+	int j;
+	for(j=0; j<MSG; j++){
+		sprintf(auxMSG, "%d", int(BDP_MSG[j]));
+		strcat(BDP,auxMSG);
+	}
+	BDP[j] = '$';
+}
+
 int main(){
 	//Instanciando um cliente para estabelecer
 	//conexão (mais inf. ver robocup_ssl_client.h)
@@ -58,6 +86,21 @@ int main(){
     
     //Instanciando o pacote (obtido dos arq. protobuf)
     SSL_WrapperPacket packet;
+
+    //=======================SERVIDOR=======================
+    struct sockaddr_in BDP_Servidor;
+    int BDP_Socket;
+    char BDP_buffer[BDP_Tbuffer];
+
+    BDP_Socket = socket(PF_INET, SOCK_DGRAM, 0);
+    BDP_Servidor.sin_family = AF_INET;
+    BDP_Servidor.sin_port = htons(PORTA);
+    BDP_Servidor.sin_addr.s_addr = inet_addr("192.168.0.171");
+
+    memset(BDP_buffer, '\0', BDP_Tbuffer);
+
+    //bind(meuSocket, (struct sockaddr*)&servidor, sizeof(sockaddr_in));
+    //======================================================
 
     while(true){
     	
@@ -102,9 +145,9 @@ int main(){
     			}
 
     			//TIME2:
-                int robots_yellow_n = detection.robots_blue_size();
+                int robots_yellow_n = detection.robots_yellow_size();
     			
-    			for(int i=0; i<robots_blue_n; i++){
+    			for(int i=0; i<robots_yellow_n; i++){
     				SSL_DetectionRobot robot = detection.robots_yellow(i);
     				RobotInfo(robot);
     			}
@@ -118,10 +161,23 @@ int main(){
     		}
 
     		//Print da mensagem criada para debug
-    		printf("======================== Novo Pacote ========================\n");
-    		for(int i=0; i<MSG; i++){
-    			printf("%f ", BDP_MSG[i]);
+    		//printf("======================== Novo Pacote ========================\n");
+    		//for(int i=0; i<MSG; i++){
+    		//	printf("%f ", BDP_MSG[i]);
+    		//}
+
+    		//Envia um pacote no IP e PORTA especificado============================
+    		memset(BDP, '\0', 100);
+    		toVecChar();
+    		int BDP_Envio = sendto(BDP_Socket, BDP, sizeof(BDP), 0, (struct sockaddr*)&BDP_Servidor, sizeof(sockaddr_in));
+    		if(BDP_Envio){
+    			printf("=======================================Pacote Enviado!=======================================\n");
+    		}else{
+    			printf("=======================================Falha no Envio!=======================================\n");
     		}
+    		memset(BDP_buffer, '\0', BDP_Tbuffer);
+    		//======================================================================
+
     	}
     	//Reseta a variavel de controle para o proximo
     	//pacote que iremos receber
