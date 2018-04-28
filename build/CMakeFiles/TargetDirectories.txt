@@ -1,0 +1,9 @@
+/home/necropsy/ssl-vision/build/CMakeFiles/edit_cache.dir
+/home/necropsy/ssl-vision/build/CMakeFiles/graphicalClient.dir
+/home/necropsy/ssl-vision/build/CMakeFiles/sslvision.dir
+/home/necropsy/ssl-vision/build/CMakeFiles/vision.dir
+/home/necropsy/ssl-vision/build/CMakeFiles/client.dir
+/home/necropsy/ssl-vision/build/CMakeFiles/rebuild_cache.dir
+/home/necropsy/ssl-vision/build/CMakeFiles/GenerateProto.dir
+/home/necropsy/ssl-vision/build/CMakeFiles/clientBDP.dir
+/home/necropsy/ssl-vision/build/CMakeFiles/logClient.dir

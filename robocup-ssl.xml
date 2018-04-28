@@ -555,7 +555,7 @@
 		</Var>
 		<Var name="Auto Publish" type="list">
 			<Var name="Enable" type="bool">
-				true
+				false
 			</Var>
 			<Var name="Interval (seconds)" type="double" minval="" maxval="">
 				3,000000

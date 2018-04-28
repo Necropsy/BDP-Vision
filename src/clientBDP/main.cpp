@@ -16,8 +16,6 @@
 #include <netdb.h>
 #include <string.h>
 
-#include <string>
-
 //Parametros para o servidor
 #define BDP_Tbuffer 1024
 #define PORTA 13822
@@ -25,20 +23,22 @@
 //===========================================================
 
 //Valor ficticio
-#define NA 999.0
+#define NA 9999.0
 //Tamanho do vetor BDP_MSG
-#define MSG 33
+#define MSG 27
 
 using namespace std;
 
 //Globais:
-//BDP_MSG gasta ou todo 33 posições
 float BDP_MSG[MSG];
-char BDP[100];
+char BDP[115];
 int varControle = 0;
 
 //Padrão de msg BDP:
-//BOLA:[conf.][posX][posY] TIME1:[id][conf.][posX][posY][ang.] TIME2:[id][conf.][posX][posY][ang]
+//OBS: Tem que desativar a opção d epublicar a geometria no ssl-vision
+//BOLA:[conf.][posX][posY] TIME1:[id][posX][posY][ang.] TIME2:[id][posX][posY][ang]
+//B_C  B_X  B_Y |R_I  R_X  R_Y  R_A |R_I  R_X  R_Y  R_A |R_I  R_X  R_Y  R_A |R_I  R_X  R_Y  R_A |R_I  R_X  R_Y  R_A |R_I  R_X  R_Y  R_A
+//9999 9999 9999|0000 0000 0000 0000|0000 0000 0000 0000|0000 0000 0000 0000|0000 0000 0000 0000|0000 0000 0000 0000|0000 0000 0000 0000
 
 //Funções:
 void RobotInfo(const SSL_DetectionRobot & robot) {
@@ -48,30 +48,34 @@ void RobotInfo(const SSL_DetectionRobot & robot) {
     } else {
         BDP_MSG[varControle] = NA;
     }
-    BDP_MSG[varControle+1] = robot.confidence();
-    BDP_MSG[varControle+2] = robot.x();
-    BDP_MSG[varControle+3] = robot.y();
+    BDP_MSG[varControle+1] = robot.x();
+    BDP_MSG[varControle+2] = robot.y();
     if (robot.has_orientation()) {
-        BDP_MSG[varControle+4] = robot.orientation();
+        BDP_MSG[varControle+3] = (robot.orientation()*100);
     } else {
-        BDP_MSG[varControle+4] = NA;
+        BDP_MSG[varControle+3] = NA;
     }
-
-    varControle += varControle+5;
+    varControle = varControle+4;
 }
 
 void toVecChar(){
-	char auxMSG[5];
-	BDP[0] = '&';
-	for(int i=0; i<MSG; i++){
-		printf("%d ", int(BDP_MSG[i]));
-	}
 	int j;
+
+	//inicializo todos os vetores relacionados a mensagem,
+	//e que serão usados para a criação do padrão BDP, foi
+	//usada a alocação dinâmica para não estourar a memória
+	//da máquina
+	char *auxMSG;
+	char *BDP2;
+	BDP2 = (char *) malloc(115*sizeof(char));
 	for(j=0; j<MSG; j++){
-		sprintf(auxMSG, "%d", int(BDP_MSG[j]));
-		strcat(BDP,auxMSG);
+		auxMSG = (char *) malloc(12*sizeof(char));
+		sprintf(auxMSG, "%04d", int(BDP_MSG[j]));
+		strcat(BDP2,auxMSG);
+		free(auxMSG);
 	}
-	BDP[j] = '$';
+	strcpy(BDP, BDP2);
+	free(BDP2);
 }
 
 int main(){
@@ -81,29 +85,24 @@ int main(){
 	//Neste caso, o cliente ja esta por default
 	//conectado no ssl, não é necessario informar
 	//o IP e a PORTA (224.5.23.2 , 10006)
-    
+
     client.open(true);
-    
+
     //Instanciando o pacote (obtido dos arq. protobuf)
     SSL_WrapperPacket packet;
 
     //=======================SERVIDOR=======================
     struct sockaddr_in BDP_Servidor;
     int BDP_Socket;
-    char BDP_buffer[BDP_Tbuffer];
 
     BDP_Socket = socket(PF_INET, SOCK_DGRAM, 0);
     BDP_Servidor.sin_family = AF_INET;
     BDP_Servidor.sin_port = htons(PORTA);
-    BDP_Servidor.sin_addr.s_addr = inet_addr("192.168.0.171");
-
-    memset(BDP_buffer, '\0', BDP_Tbuffer);
-
-    //bind(meuSocket, (struct sockaddr*)&servidor, sizeof(sockaddr_in));
+    BDP_Servidor.sin_addr.s_addr = htonl(INADDR_ANY);
     //======================================================
 
     while(true){
-    	
+
     	//verifica se algum pacote foi recebido
     	if(client.receive(packet)){
 
@@ -118,7 +117,7 @@ int main(){
     			int balls_n = detection.balls_size();
     			if(balls_n >= 1){
     				SSL_DetectionBall ball = detection.balls(0);
-    				BDP_MSG[varControle] = ball.confidence();
+    				BDP_MSG[varControle] = (ball.confidence())*100;
     				BDP_MSG[varControle+1] = ball.x();
     				BDP_MSG[varControle+2] = ball.y();
     			}else{
@@ -133,20 +132,17 @@ int main(){
     			varControle += varControle+3;
 
     			//TIME1:
-                int robots_blue_n = detection.robots_blue_size();
-    			
-    			//***Limitando a 3 robos por time (EM ANALISE SE É
-    			//***VIÁVEL LIMITAR)
-    			//***if(robots_blue_n>3){robots_blue_n = 3;}
-    			
+          		int robots_blue_n = detection.robots_blue_size();
+
+    			//***Limitando a 3 robos por time
     			for(int i=0; i<robots_blue_n; i++){
     				SSL_DetectionRobot robot = detection.robots_blue(i);
     				RobotInfo(robot);
     			}
 
     			//TIME2:
-                int robots_yellow_n = detection.robots_yellow_size();
-    			
+          		int robots_yellow_n = detection.robots_yellow_size();
+
     			for(int i=0; i<robots_yellow_n; i++){
     				SSL_DetectionRobot robot = detection.robots_yellow(i);
     				RobotInfo(robot);
@@ -157,27 +153,13 @@ int main(){
     			//seta o BDP_MSG com a flag -1 no inicio, esta implementação
     			//foi pensada para calcular futuramente a quantidade de falhas
     			//na obtenção do pacote diretamente do SSL-Vision
-    			BDP_MSG[varControle] = -1;
+    			BDP_MSG[varControle] = -NA;
     		}
 
-    		//Print da mensagem criada para debug
-    		//printf("======================== Novo Pacote ========================\n");
-    		//for(int i=0; i<MSG; i++){
-    		//	printf("%f ", BDP_MSG[i]);
-    		//}
-
-    		//Envia um pacote no IP e PORTA especificado============================
-    		memset(BDP, '\0', 100);
+    		//Envia um pacote no IP ou PORTA especificado===========================
     		toVecChar();
-    		int BDP_Envio = sendto(BDP_Socket, BDP, sizeof(BDP), 0, (struct sockaddr*)&BDP_Servidor, sizeof(sockaddr_in));
-    		if(BDP_Envio){
-    			printf("=======================================Pacote Enviado!=======================================\n");
-    		}else{
-    			printf("=======================================Falha no Envio!=======================================\n");
-    		}
-    		memset(BDP_buffer, '\0', BDP_Tbuffer);
+    		sendto(BDP_Socket, BDP, sizeof(BDP), 0, (struct sockaddr*)&BDP_Servidor, sizeof(sockaddr_in));
     		//======================================================================
-
     	}
     	//Reseta a variavel de controle para o proximo
     	//pacote que iremos receber
